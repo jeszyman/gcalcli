@@ -139,9 +139,13 @@ class GoogleCalendarInterface:
             except HttpError as e:
                 error = json.loads(e.content)
                 error = error.get('error')
-                if error.get('code') == '403' and \
+                # The API returns the code as a number, and signals rate
+                # limiting with 403 or 429. The last attempt re-raises so
+                # callers see the error instead of None.
+                if error.get('code') in (403, 429) and \
                         error.get('errors')[0].get('reason') \
-                        in ['rateLimitExceeded', 'userRateLimitExceeded']:
+                        in ['rateLimitExceeded', 'userRateLimitExceeded'] and \
+                        n < self.max_retries - 1:
                     time.sleep((2 ** n) + random.random())
                 else:
                     raise
