@@ -457,3 +457,17 @@ def test_retry_with_backoff_does_not_retry_other_errors(PatchedGCalI,
     with pytest.raises(HttpError):
         gcal._retry_with_backoff(request)
     assert request.calls == 1
+
+
+def test_retry_with_backoff_raises_http_error_without_errors_list(
+        PatchedGCalI, monkeypatch):
+    monkeypatch.setattr('time.sleep', lambda seconds: None)
+    gcal = PatchedGCalI()
+    body = {'error': {'code': 429, 'message': 'Too many requests',
+                      'status': 'RESOURCE_EXHAUSTED'}}
+    error = HttpError(httplib2.Response({'status': 429}),
+                      dumps(body).encode())
+    request = FailingRequest(error, failures=1)
+    with pytest.raises(HttpError):
+        gcal._retry_with_backoff(request)
+    assert request.calls == 1
